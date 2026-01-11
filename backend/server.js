@@ -68,7 +68,7 @@ app.get("/api/manager/stats", async (req, res) => {
       FROM users u
       LEFT JOIN leads l ON l.created_by = u.id
       WHERE u.id IN (
-        SELECT employee_id FROM manager_employees WHERE manager_id = $1
+        SELECT child_id FROM manager_employees WHERE parent_id = $1
       )
       GROUP BY u.username
       ORDER BY lead_count DESC
