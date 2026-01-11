@@ -19,9 +19,12 @@ function showToast(msg, timeout = 3000) {
 
 async function loadUsers() {
   try {
-    const res = await fetch("/api/admin/users");
+    const admin = JSON.parse(localStorage.getItem("user")) || {};
+    const res = await fetch("/api/admin/users", {
+      headers: { "x-admin-id": admin.id }
+    });
     if (!res.ok) throw new Error("Failed to fetch users");
-    
+
     const users = await res.json();
     console.log('All users:', users);
     
