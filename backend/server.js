@@ -428,17 +428,21 @@ app.patch("/api/admin/users/:id/status", async (req, res) => {
 
 app.post("/api/admin/assign-employee", async (req, res) => {
   try {
-    const { parentId, childId } = req.body;
+    const { parentId, childId, managerId, employeeId } = req.body;
+    
+    // Support both parameter naming conventions
+    const finalManagerId = parentId || managerId;
+    const finalEmployeeId = childId || employeeId;
 
-    if (!parentId || !childId) {
-      return res.status(400).json({ error: "parentId & childId required" });
+    if (!finalManagerId || !finalEmployeeId) {
+      return res.status(400).json({ error: "managerId & employeeId required" });
     }
 
     await pool.query(
       `INSERT INTO manager_employees (manager_id, employee_id)
        VALUES ($1, $2)
        ON CONFLICT DO NOTHING`,
-      [parentId, childId]
+      [finalManagerId, finalEmployeeId]
     );
 
     res.json({ success: true });
@@ -481,14 +485,18 @@ if (process.env.NODE_ENV !== "production") {
 
 app.delete("/api/admin/unassign-employee", async (req, res) => {
   try {
-    const { managerId, employeeId } = req.body;
+    const { managerId, employeeId, parentId, childId } = req.body;
     
-    console.log("Unassign request received:", { managerId, employeeId });
+    // Support both parameter naming conventions
+    const finalManagerId = managerId || parentId;
+    const finalEmployeeId = employeeId || childId;
+    
+    console.log("Unassign request received:", { managerId: finalManagerId, employeeId: finalEmployeeId });
 
     // First check if the assignment exists
     const checkResult = await pool.query(
       "SELECT * FROM manager_employees WHERE manager_id = $1 AND employee_id = $2",
-      [managerId, employeeId]
+      [finalManagerId, finalEmployeeId]
     );
     
     console.log("Existing assignment check:", checkResult.rows);
@@ -500,7 +508,7 @@ app.delete("/api/admin/unassign-employee", async (req, res) => {
 
     const deleteResult = await pool.query(
       "DELETE FROM manager_employees WHERE manager_id = $1 AND employee_id = $2",
-      [managerId, employeeId]
+      [finalManagerId, finalEmployeeId]
     );
 
     console.log("Delete result:", deleteResult);

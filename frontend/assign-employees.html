@@ -538,6 +538,39 @@
                 </table>
             </div>
         </div>
+
+        <!-- Employee Assignments Table -->
+        <div class="assignments-table-section">
+            <div class="section-header">
+                <div class="section-icon">👥</div>
+                <div class="section-title">
+                    <h3>Employee Assignments</h3>
+                    <p>View employees and their assigned dealers</p>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="assignments-table">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Assigned Dealer</th>
+                            <th>Dealer Count</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeeAssignmentsTableBody">
+                        <tr>
+                            <td colspan="4" class="loading-row">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    Loading employee assignments...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>

@@ -54,6 +54,18 @@ async function loadUsers() {
   }
 }
 
+async function onManagerChange(e) {
+  const statusEl = document.querySelector(".section-title p");
+  const bossId = e.target.value;
+  if (bossId) {
+    statusEl.textContent = "Loading current assignments...";
+    loadCurrentAssignments(bossId);
+  } else {
+    statusEl.textContent = "Select a manager to view current assignments";
+    renderEmployees();
+  }
+}
+
 function populateManagerSelect() {
   const mgrSelect = document.getElementById("managerSelect");
   mgrSelect.innerHTML = "";
@@ -89,33 +101,26 @@ function populateManagerSelect() {
   }
 }
 
-
-function onManagerChange() {
-  const managerId = document.getElementById("managerSelect").value;
-  const statusEl = document.getElementById("assignmentStatus");
-
-  currentAssignments = []; // ✅ RESET HERE
-
-  if (managerId) {
-    statusEl.textContent = "Loading current assignments...";
-    loadCurrentAssignments(managerId);
-  } else {
-    statusEl.textContent = "Select a manager to view current assignments";
-    renderEmployees();
-  }
-}
-
-async function loadCurrentAssignments(managerId) {
+async function loadCurrentAssignments(bossId) {
   try {
-    console.log("Manager ID (before):", managerId, typeof managerId);
+    console.log("Boss ID (before):", bossId, typeof bossId);
 
-    const res = await fetch(`/api/admin/manager-employees/${managerId}`);
+    const res = await fetch(`/api/admin/manager-employees/${bossId}`);
     const data = await res.json();
 
     console.log("Assignments raw:", data);
     console.log("Assignments types:", data.map(x => typeof x));
+    console.log("Assignment fields:", data.length > 0 ? Object.keys(data[0]) : 'No data');
 
-currentAssignments = data.map(r => Number(r.employee_id));
+    // Update currentAssignments with the latest data from server
+    // Try different possible field names that the API might return
+    currentAssignments = data.map(r => {
+      console.log("Processing assignment:", r);
+      // Try multiple possible field names
+      const childId = r.employee_id || r.child_id || r.childId || r.employeeId;
+      console.log("Found childId:", childId, "for assignment:", r);
+      return Number(childId);
+    });
 
     console.log("Assignments normalized:", currentAssignments);
 
@@ -261,8 +266,8 @@ try {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        parentId: Number(managerId),
-        childId: Number(employeeId)
+        managerId: Number(managerId),
+        employeeId: Number(employeeId)
       })
     });
   }   // ← THIS BRACE WAS MISSING
@@ -273,8 +278,8 @@ try {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        parentId: Number(managerId),
-        childId: Number(employeeId)
+        managerId: Number(managerId),
+        employeeId: Number(employeeId)
       })
     });
   }
@@ -290,7 +295,10 @@ try {
   }
 
   await loadCurrentAssignments(managerId);
-  setTimeout(loadAllAssignments, 500);
+  setTimeout(async () => {
+    await loadAllAssignments();
+    await loadEmployeeAssignments();
+  }, 500);
 
 } catch (err) {
   console.error(err);
@@ -338,6 +346,9 @@ async function loadAllAssignments() {
 
     console.log('Final assignments data:', assignments);
     renderAssignmentsTable(assignments);
+    
+    // Also load employee assignments
+    await loadEmployeeAssignments();
   } catch (err) {
     console.error(err);
     const tbody = document.getElementById("assignmentsTableBody");
@@ -444,11 +455,177 @@ async function unassignAllFromManager(managerId, managerName) {
       await loadCurrentAssignments(managerId);
     }
     
-    // Refresh the table
+    // Refresh table
     await loadAllAssignments();
+    
+    // Also refresh employee assignments table
+    await loadEmployeeAssignments();
   } catch (err) {
     console.error(err);
     showToast("Failed to unassign employees");
+  }
+}
+
+async function loadEmployeeAssignments() {
+  try {
+    const tbody = document.getElementById("employeeAssignmentsTableBody");
+    tbody.innerHTML = '<tr><td colspan="4" class="loading-row"><div class="loading"><div class="spinner"></div>Loading employee assignments...</div></td></tr>';
+
+    const employeeAssignments = [];
+    
+    // Get assignments for each employee
+    console.log('Processing employees for employee assignments table:', employees);
+    console.log('Available dealers:', dealers);
+    
+    for (const employee of employees) {
+      try {
+        const res = await fetch(`/api/admin/manager-employees/${employee.id}`);
+        console.log(`API response for employee ${employee.username}:`, res.status, res.ok);
+        
+        if (res.ok) {
+          const dealerIds = await res.json();
+          console.log(`Employee ${employee.username} assigned dealers:`, dealerIds);
+          console.log('Dealer IDs type:', typeof dealerIds, Array.isArray(dealerIds) ? 'array' : 'not array');
+          
+          if (dealerIds && dealerIds.length > 0) {
+            const assignedDealers = dealers.filter(dealer =>
+              dealerIds.some(id => Number(id) === Number(dealer.id))
+            );
+
+            console.log(`Found assigned dealers for ${employee.username}:`, assignedDealers);
+
+            if (assignedDealers.length > 0) {
+              employeeAssignments.push({
+                employee: employee,
+                dealers: assignedDealers
+              });
+            }
+          }
+        } else {
+          console.error(`Failed to load assignments for employee ${employee.username}`);
+        }
+      } catch (err) {
+        console.error(`Error loading assignments for employee ${employee.username}:`, err);
+      }
+    }
+
+    console.log('Final employee assignments data:', employeeAssignments);
+    console.log('Employee assignments count:', employeeAssignments.length);
+    
+    renderEmployeeAssignmentsTable(employeeAssignments);
+  } catch (err) {
+    console.error(err);
+    const tbody = document.getElementById("employeeAssignmentsTableBody");
+    tbody.innerHTML = '<tr><td colspan="4" class="no-assignments">Failed to load employee assignments</td></tr>';
+  }
+}
+
+function renderEmployeeAssignmentsTable(employeeAssignments) {
+  const tbody = document.getElementById("employeeAssignmentsTableBody");
+  
+  if (employeeAssignments.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="no-assignments">No employee assignments found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = employeeAssignments.map(assignment => {
+    const employee = assignment.employee;
+    const assignedDealers = assignment.dealers;
+    
+    const dealerTags = assignedDealers.map(dealer => 
+      `<span class="employee-tag">${dealer.username}</span>`
+    ).join('');
+
+    return `
+      <tr>
+        <td><strong>${employee.username}</strong></td>
+        <td>
+          <div class="employee-tags">
+            ${dealerTags}
+          </div>
+        </td>
+        <td>
+          <span class="employee-count">${assignedDealers.length}</span>
+        </td>
+        <td>
+          <button class="action-btn unassign" data-employee-id="${employee.id}" data-employee-name="${employee.username}">
+            Unassign All
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Add event delegation for unassign buttons
+document.addEventListener('click', (e) => {
+  if (e.target.matches('.action-btn.unassign')) {
+    const employeeId = e.target.dataset.employeeId;
+    const employeeName = e.target.dataset.employeeName;
+    unassignAllFromEmployee(Number(employeeId), employeeName);
+  }
+});
+
+async function unassignAllFromEmployee(employeeId, employeeName) {
+  if (!confirm(`Are you sure you want to unassign all dealers from ${employeeName}?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/manager-employees/${employeeId}`);
+    const dealerIds = await res.json();
+    
+    if (!dealerIds || dealerIds.length === 0) {
+      showToast(`No dealers assigned to ${employeeName}`);
+      return;
+    }
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const dealerId of dealerIds) {
+      try {
+        console.log(`Attempting to unassign dealer ${dealerId} from employee ${employeeId}`);
+        
+        const unassignRes = await fetch("/api/admin/unassign-employee", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            managerId: Number(employeeId),
+            employeeId: Number(dealerId)
+          })
+        });
+
+        console.log(`Unassign response status:`, unassignRes.status);
+        
+        if (unassignRes.ok) {
+          const result = await unassignRes.json();
+          console.log(`Unassign success for dealer ${dealerId}:`, result);
+          successCount++;
+        } else {
+          const errorText = await unassignRes.text();
+          console.error(`Failed to unassign dealer ${dealerId}. Status: ${unassignRes.status}, Error: ${errorText}`);
+          errorCount++;
+        }
+      } catch (err) {
+        console.error(`Exception when unassigning dealer ${dealerId}:`, err);
+        errorCount++;
+      }
+    }
+
+    if (successCount > 0 && errorCount === 0) {
+      showToast(`Successfully unassigned ${successCount} dealer(s) from ${employeeName}`);
+    } else if (successCount > 0) {
+      showToast(`Partially successful: unassigned ${successCount} dealer(s), ${errorCount} failed`);
+    } else {
+      showToast(`Failed to unassign any dealers from ${employeeName}. Check console for details.`);
+    }
+    
+    // Refresh employee assignments table
+    await loadEmployeeAssignments();
+  } catch (err) {
+    console.error('Error in unassignAllFromEmployee:', err);
+    showToast('Failed to unassign dealers');
   }
 }
 
