@@ -380,45 +380,37 @@ app.get("/api/admin/users", async (req, res) => {
     }
 
     const { rows } = await pool.query(`
-            SELECT
-              u.id,
-              u.username,
-              u.password,
-              u.role,
-              u.status,
-              u.last_login,
-
-              mp.first_name,
-              mp.dob,
-              mp.joining_date,
-              mp.pan,
-              mp.aadhar,
-              mp.mobile,
-              mp.email,
-              mp.location,
-              mp.account_no,
-              mp.ifsc,
-              mp.bank_name
-
-            FROM users u
-            LEFT JOIN manager_profiles mp ON mp.user_id = u.id
-
-
+      SELECT
+        u.id,
+        u.username,
+        u.password,
+        u.role,
+        u.status,
+        u.last_login,
+        mp.first_name,
+        mp.dob,
+        mp.joining_date,
+        mp.pan,
+        mp.aadhar,
+        mp.mobile,
+        mp.email,
+        mp.location,
+        mp.account_no,
+        mp.ifsc,
+        mp.bank_name
+      FROM users u
+      LEFT JOIN manager_profiles mp ON mp.user_id = u.id
+      WHERE u.deleted_at IS NULL
+      ORDER BY u.id
     `);
 
     res.json(rows);
-
-} catch (err) {
-  console.error("CREATE USER ERROR:", err);
-
-  if (err.code === "23505") {
-    return res.status(400).json({ error: "Username already exists" });
+  } catch (err) {
+    console.error("FETCH USERS ERROR:", err);
+    res.status(500).json({ error: "Failed to fetch users" });
   }
-
-  res.status(500).json({ error: "Failed to create user" });
-}
-
 });
+
 
 
 
@@ -679,11 +671,6 @@ app.get("/api/admin/manager-employees/:managerId", async (req, res) => {
   }
 });
 
-// Start server in non-production; also export app for tests
-const PORT = process.env.PORT || 3001;
-if (process.env.NODE_ENV !== "production") {
-  app.listen(PORT, () => console.log(`🚀 Running locally on http://localhost:${PORT}`));
-}
 
 
 
@@ -798,6 +785,11 @@ app.post("/api/admin/notifications/read", async (req, res) => {
     res.status(500).json({ error: "Failed to mark notifications as read" });
   }
 });
+// Start server in non-production; also export app for tests
+const PORT = process.env.PORT || 3001;
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => console.log(`🚀 Running locally on http://localhost:${PORT}`));
+}
 
 
 module.exports = app;

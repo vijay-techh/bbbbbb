@@ -415,8 +415,8 @@ function openManagerInfo(userId) {
 
       <hr>
 
-      🏦 <b>Bank:</b> ${u.bank_name || "-"}<br>
-      💳 <b>Account:</b> ${u.account_no || "-"}<br>
+      🏦 <b>Bank Name:</b> ${u.bank_name || "-"}<br>
+      💳 <b>Account No:</b> ${u.account_no || "-"}<br>
       🏷 <b>IFSC:</b> ${u.ifsc || "-"}
     </div>
   `;
