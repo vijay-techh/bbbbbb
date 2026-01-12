@@ -368,9 +368,16 @@ function renderAssignmentsTable(assignments) {
     const manager = assignment.manager;
     const assignedEmployees = assignment.employees;
     
-    const employeeTags = assignedEmployees.map(emp => 
-      `<span class="employee-tag">${emp.username}</span>`
-    ).join('');
+        const employeeTags = assignedEmployees.map(emp => `
+      <span class="employee-tag">
+        ${emp.username}
+        <button class="mini-unassign"
+          onclick="unassignSingle(${manager.id}, ${emp.id}, '${manager.username}', '${emp.username}')">
+          ✕
+        </button>
+      </span>
+    `).join('');
+
 
     return `
       <tr>
@@ -532,9 +539,16 @@ function renderEmployeeAssignmentsTable(employeeAssignments) {
     const employee = assignment.employee;
     const assignedDealers = assignment.dealers;
     
-    const dealerTags = assignedDealers.map(dealer => 
-      `<span class="employee-tag">${dealer.username}</span>`
-    ).join('');
+    const dealerTags = assignedDealers.map(dealer => `
+      <span class="employee-tag">
+        ${dealer.username}
+        <button class="mini-unassign"
+          onclick="unassignSingle(${employee.id}, ${dealer.id}, '${employee.username}', '${dealer.username}')">
+          ✕
+        </button>
+      </span>
+    `).join('');
+
 
     return `
       <tr>
@@ -628,6 +642,37 @@ async function unassignAllFromEmployee(employeeId, employeeName) {
     showToast('Failed to unassign dealers');
   }
 }
+
+
+async function unassignSingle(managerId, employeeId, managerName, employeeName) {
+  if (!confirm(`Unassign ${employeeName} from ${managerName}?`)) return;
+
+  try {
+    const res = await fetch("/api/admin/unassign-employee", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        managerId: Number(managerId),
+        employeeId: Number(employeeId)
+      })
+    });
+
+    if (!res.ok) throw new Error("Unassign failed");
+
+    showToast(`${employeeName} unassigned from ${managerName}`);
+
+    // Refresh everything
+    await loadCurrentAssignments(managerId);
+    await loadAllAssignments();
+    await loadEmployeeAssignments();
+
+  } catch (err) {
+    console.error(err);
+    showToast("Failed to unassign");
+  }
+}
+
+
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
