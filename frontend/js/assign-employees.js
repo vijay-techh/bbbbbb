@@ -366,29 +366,52 @@ async function loadAllAssignments() {
     
     // Get assignments for each manager
     console.log('Processing managers for assignments table:', managers);
+    console.log('Available employees:', employees);
+    console.log('Available dealers:', dealers);
     
     for (const manager of managers) {
       try {
         const res = await fetch(`/api/admin/manager-employees/${manager.id}`);
         if (res.ok) {
           const employeeIds = await res.json();
-          console.log(`Manager ${manager.username} assignments:`, employeeIds);
+          console.log(`Manager ${manager.username} (ID: ${manager.id}) - Raw employeeIds from API:`, employeeIds, 'Type:', typeof employeeIds, 'IsArray:', Array.isArray(employeeIds));
           
-          if (employeeIds && employeeIds.length > 0) {
-           const assignedEmployees = [...employees, ...dealers].filter(u =>
-              employeeIds.some(id => Number(id) === Number(u.id))
-            );
-
+          // Ensure employeeIds is an array
+          const normalizedIds = Array.isArray(employeeIds) ? employeeIds : [];
+          
+          if (normalizedIds.length > 0) {
+            // Normalize IDs to numbers for comparison
+            const normalizedEmployeeIds = normalizedIds.map(id => Number(id));
+            console.log(`Manager ${manager.username} - Normalized employee IDs:`, normalizedEmployeeIds);
             
+            // Find matching employees and dealers
+            const assignedEmployees = [...employees, ...dealers].filter(u => {
+              const userId = Number(u.id);
+              const isMatch = normalizedEmployeeIds.includes(userId);
+              if (isMatch) {
+                console.log(`  ✓ Matched employee/dealer: ${u.username} (ID: ${userId})`);
+              }
+              return isMatch;
+            });
+
+            console.log(`Manager ${manager.username} - Found ${assignedEmployees.length} matching employees/dealers out of ${normalizedIds.length} assigned IDs`);
+            
+            // Always add manager if they have any assignments (even if some IDs don't match)
             if (assignedEmployees.length > 0) {
               assignments.push({
                 manager: manager,
                 employees: assignedEmployees
               });
+              console.log(`✓ Added manager ${manager.username} to assignments`);
+            } else {
+              console.warn(`⚠ Manager ${manager.username} has ${normalizedIds.length} assignments but none match current employees/dealers`);
             }
+          } else {
+            console.log(`Manager ${manager.username} has no assignments`);
           }
         } else {
-          console.error(`Failed to load assignments for manager ${manager.username}`);
+          const errorText = await res.text();
+          console.error(`Failed to load assignments for manager ${manager.username} (ID: ${manager.id}):`, res.status, errorText);
         }
       } catch (err) {
         console.error(`Error loading assignments for manager ${manager.username}:`, err);
@@ -396,6 +419,7 @@ async function loadAllAssignments() {
     }
 
     console.log('Final assignments data:', assignments);
+    console.log(`Total managers processed: ${managers.length}, Managers with assignments shown: ${assignments.length}`);
     renderAssignmentsTable(assignments);
     
     // Also load employee assignments
