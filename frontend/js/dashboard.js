@@ -31,6 +31,12 @@ if (user.role === "admin") {
     notificationBell.style.display = "block";
   }
   
+  // Change logo to WheelsPartner for dealers
+  const logo = document.getElementById("logo");
+  if (logo) {
+    logo.textContent = "WheelsPartner";
+  }
+  
   // Hide admin menus
   if (adminMenu) adminMenu.style.display = "none";
   if (assignMenu) assignMenu.style.display = "none";
