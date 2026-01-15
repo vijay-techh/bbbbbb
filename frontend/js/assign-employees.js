@@ -110,39 +110,47 @@ function populateManagerSelect() {
 
 async function loadCurrentAssignments(bossId) {
   try {
-    console.log("Boss ID (before):", bossId, typeof bossId);
+    const selectedBoss = [...managers, ...employees].find(
+      u => u.id === Number(bossId)
+    );
 
-if (selectedBoss.role === "employee") {
-  const res = await fetch(`/api/admin/employee-dealers/${bossId}`);
-  currentAssignments = (await res.json()).map(Number);
-} else {
-  const res = await fetch(`/api/admin/manager-employees/${bossId}`);
-  currentAssignments = (await res.json()).map(Number);
-}
+    if (!selectedBoss) {
+      console.error("Boss not found for ID:", bossId);
+      return;
+    }
+
+    console.log("Boss:", selectedBoss.username, "Role:", selectedBoss.role);
+
+    let res;
+
+    if (selectedBoss.role === "employee") {
+      // EMPLOYEE → DEALER
+      res = await fetch(`/api/admin/employee-dealers/${bossId}`);
+    } else {
+      // MANAGER → EMPLOYEE
+      res = await fetch(`/api/admin/manager-employees/${bossId}`);
+    }
+
+    if (!res.ok) throw new Error("Assignments API failed");
+
     const data = await res.json();
 
     console.log("Assignments raw:", data);
-    console.log("Assignments types:", data.map(x => typeof x));
-    console.log("Assignment fields:", data.length > 0 ? Object.keys(data[0]) : 'No data');
 
-    // Update currentAssignments with the latest data from server
-    // Try different possible field names that the API might return
-    currentAssignments = data.map(r => {
-      console.log("Processing assignment:", r);
-      // Try multiple possible field names
-      const childId = r.employee_id || r.child_id || r.childId || r.employeeId;
-      console.log("Found childId:", childId, "for assignment:", r);
-      return Number(childId);
-    });
+    // API returns array of IDs → normalize
+    currentAssignments = (Array.isArray(data) ? data : []).map(id =>
+      Number(id)
+    );
 
     console.log("Assignments normalized:", currentAssignments);
 
     renderEmployees();
   } catch (err) {
-    console.error(err);
+    console.error("loadCurrentAssignments error:", err);
     showToast("Failed to load current assignments");
   }
 }
+
 
 
 function renderEmployees() {

@@ -475,8 +475,11 @@ function toggleRoleSections(role) {
 function formatRole(role) {
   if (role === "admin") return "Admin";
   if (role === "manager") return "Manager";
+  if (role === "dealer") return "Dealer";
   return "Employee";
 }
+
+
 
 /* ---------------- EVENTS ---------------- */
 document.addEventListener("DOMContentLoaded", () => {
