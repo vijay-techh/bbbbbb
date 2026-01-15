@@ -417,7 +417,7 @@ app.get("/api/admin/users", async (req, res) => {
 //tharun
 app.post("/api/admin/users", async (req, res) => {
   try {
-    const { username, password, role, profile } = req.body;
+    const { username, password, role, profile, employeeProfile } = req.body;
 
     console.log("ADMIN CREATE USER:", req.body);
 
@@ -455,6 +455,21 @@ if (roleNormalized === "manager") {
   }
 }
 
+if (roleNormalized === "employee") {
+  if (
+    !employeeProfile ||
+    !employeeProfile.employeeId ||
+    !employeeProfile.firstName ||
+    !employeeProfile.mobileNo ||
+    !employeeProfile.bank ||
+    !employeeProfile.bank.accountNo ||
+    !employeeProfile.bank.ifsc
+  ) {
+    return res.status(400).json({ error: "Incomplete employee profile" });
+  }
+}
+
+
     // Insert user
     const userRes = await pool.query(
       `INSERT INTO users (username, password, role, status)
@@ -488,6 +503,52 @@ if (roleNormalized === "manager") {
       );
 
     }
+console.log("EMPLOYEE PROFILE INSERT:", employeeProfile);
+
+    
+    if (roleNormalized === "employee") {
+  const empRes = await pool.query(
+    `INSERT INTO employee_profiles
+    (user_id, employee_id, first_name, last_name,
+     pan_no, aadhar_no, dob, joining_date,
+     mobile_no, father_mobile_no, mother_mobile_no,
+     personal_email, office_email, location)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+    RETURNING id`,
+    [
+      userId,
+      employeeProfile.employeeId,
+      employeeProfile.firstName,
+      employeeProfile.lastName,
+      employeeProfile.panNo,
+      employeeProfile.aadharNo,
+      employeeProfile.dob && employeeProfile.dob !== "" ? employeeProfile.dob : null,
+      employeeProfile.joiningDate && employeeProfile.joiningDate !== "" ? employeeProfile.joiningDate : null,
+      employeeProfile.mobileNo,
+      employeeProfile.fatherMobileNo,
+      employeeProfile.motherMobileNo,
+      employeeProfile.personalEmail,
+      employeeProfile.officeEmail,
+      employeeProfile.location
+    ]
+  );
+
+  const employeeProfileId = empRes.rows[0].id;
+
+  await pool.query(
+    `INSERT INTO employee_bank_details
+     (employee_profile_id, account_no, ifsc, bank_name, bank_branch)
+     VALUES ($1,$2,$3,$4,$5)`,
+    [
+      employeeProfileId,
+      employeeProfile.bank.accountNo,
+      employeeProfile.bank.ifsc,
+      employeeProfile.bank.bankName,
+      employeeProfile.bank.bankBranch
+    ]
+  );
+}
+
 
     res.json({ success: true });
     
@@ -569,6 +630,47 @@ app.patch("/api/admin/users/:id", async (req, res) => {
   }
 });
 
+app.get("/api/admin/employee-info/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { rows } = await pool.query(`
+      SELECT
+        u.username,
+        ep.employee_id,
+        ep.first_name,
+        ep.last_name,
+        ep.pan_no,
+        ep.aadhar_no,
+        ep.dob,
+        ep.joining_date,
+        ep.mobile_no,
+        ep.father_mobile_no,
+        ep.mother_mobile_no,
+        ep.personal_email,
+        ep.office_email,
+        ep.location,
+
+        eb.account_no,
+        eb.ifsc,
+        eb.bank_name,
+        eb.bank_branch
+      FROM users u
+      JOIN employee_profiles ep ON ep.user_id = u.id
+      LEFT JOIN employee_bank_details eb ON eb.employee_profile_id = ep.id
+      WHERE u.id = $1
+    `, [userId]);
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Employee info not found" });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("EMPLOYEE INFO ERROR:", err);
+    res.status(500).json({ error: "Failed to fetch employee info" });
+  }
+});
 
 
 app.delete("/api/admin/users/:id", async (req, res) => {

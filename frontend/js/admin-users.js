@@ -63,16 +63,25 @@ tr.innerHTML = `
 // Add Info button for managers
 const infoCell = tr.querySelector(".info-cell");
 
-if (u.role === "manager") {
+if (u.role === "manager" || u.role === "employee") {
   const infoBtn = document.createElement("button");
   infoBtn.className = "info-btn";
   infoBtn.textContent = "ⓘ";
-  infoBtn.title = "View manager info";
-  infoBtn.addEventListener("click", () => openManagerInfo(u.id));
+  infoBtn.title = "View info";
+
+  if (u.role === "manager") {
+    infoBtn.addEventListener("click", () => openManagerInfo(u.id));
+  }
+
+  if (u.role === "employee") {
+    infoBtn.addEventListener("click", () => openEmployeeInfo(u.id));
+  }
+
   infoCell.appendChild(infoBtn);
 } else {
   infoCell.textContent = "—";
 }
+
 
 document.getElementById("closeInfoBtn")?.addEventListener("click", closeManagerInfo);
 
@@ -197,7 +206,11 @@ function closeModal() {
 }
 function openCreate() {
   openModal("Create User");
+
+  const role = document.getElementById("modalRole").value;
+  toggleRoleSections(role);
 }
+
 
 function openEdit(id) {
   const u = allUsers.find(x => x.id === id);
@@ -254,6 +267,52 @@ async function submitModal() {
 
   }
 
+
+  let employeeProfile = null;
+
+  if (role === "employee") {
+      profile = null; // 🔥 FORCE CLEAR
+
+    employeeProfile = {
+      employeeId: document.getElementById("employee_id").value.trim(),
+      firstName: document.getElementById("first_name").value.trim(),
+      lastName: document.getElementById("last_name").value.trim(),
+
+      panNo: document.getElementById("pan_no").value.trim(),
+      aadharNo: document.getElementById("aadhar_no").value.trim(),
+
+      dob: document.getElementById("dob").value || null,
+      joiningDate: document.getElementById("joining_date").value || null,
+
+      mobileNo: document.getElementById("mobile_no").value.trim(),
+      fatherMobileNo: document.getElementById("father_mobile_no").value.trim(),
+      motherMobileNo: document.getElementById("mother_mobile_no").value.trim(),
+
+      personalEmail: document.getElementById("personal_email").value.trim(),
+      officeEmail: document.getElementById("office_email").value.trim(),
+
+      location: document.getElementById("location").value.trim(),
+
+      bank: {
+        accountNo: document.getElementById("account_no").value.trim(),
+        ifsc: document.getElementById("ifsc").value.trim(),
+        bankName: document.getElementById("bank_name").value.trim(),
+        bankBranch: document.getElementById("bank_branch").value.trim()
+      }
+    };
+
+    // basic validation
+    if (
+      !employeeProfile.employeeId ||
+      !employeeProfile.firstName ||
+      !employeeProfile.mobileNo ||
+      !employeeProfile.bank.accountNo ||
+      !employeeProfile.bank.ifsc
+    ) {
+      return showToast("Employee & bank details are required");
+    }
+  }
+
   try {
     let res, data;
     
@@ -278,9 +337,9 @@ async function submitModal() {
       // CREATE new user
       if (!password) return showToast("Password required for new users");
       
-      console.log("CREATING USER:", { username, password, role, profile });
+      console.log("CREATING USER:", { username, password, role, profile,  employeeProfile });
 
-        const res = await fetch("/api/admin/users", {
+          res = await fetch("/api/admin/users", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -290,7 +349,9 @@ async function submitModal() {
             username,
             password,
             role,
-            profile   // 👈 THIS was missing
+            profile,   // 👈 THIS was missing
+            employeeProfile   // employee profile
+
           })
         });
 
@@ -309,6 +370,16 @@ async function submitModal() {
     showToast(err.message || "Failed to save user");
   }
 }
+
+
+
+
+
+
+
+
+
+
 
 const roleSelect = document.getElementById("modalRole");
 if (roleSelect) {
@@ -385,9 +456,39 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("userSearch")
     ?.addEventListener("input", e => renderUsers(e.target.value));
-  document.getElementById("modalRole").addEventListener("change", e => {
-  const isManager = e.target.value === "manager";
-  document.getElementById("managerFields").style.display = isManager ? "block" : "none";
+//   document.getElementById("modalRole").addEventListener("change", e => {
+//   const isManager = e.target.value === "manager";
+//   document.getElementById("managerFields").style.display = isManager ? "block" : "none";
+  
+// });
+const roleSelect = document.getElementById("modalRole");
+const managerFields = document.getElementById("managerFields");
+const employeeSection = document.getElementById("employeeSection");
+
+function toggleRoleSections(role) {
+  const managerFields = document.getElementById("managerFields");
+  const employeeSection = document.getElementById("employeeSection");
+
+  // hide all first
+  if (managerFields) managerFields.style.display = "none";
+  if (employeeSection) employeeSection.style.display = "none";
+
+  // show based on role
+  if (role === "manager") {
+    managerFields.style.display = "block";
+  }
+
+  if (role === "employee") {
+    employeeSection.style.display = "block";
+  }
+}
+
+// initial state (important when modal opens)
+toggleRoleSections(roleSelect.value);
+
+// on change
+roleSelect.addEventListener("change", e => {
+  toggleRoleSections(e.target.value);
 });
 
 
@@ -427,6 +528,51 @@ function openManagerInfo(userId) {
 
 function closeManagerInfo() {
   document.getElementById("infoBackdrop").classList.remove("show");
+}
+async function openEmployeeInfo(userId) {
+  try {
+    const res = await fetch(`/api/admin/employee-info/${userId}`);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error);
+
+    document.getElementById("managerInfoBody").innerHTML = `
+      <div style="line-height:1.8">
+        <b>${data.first_name} ${data.last_name || ""}</b><br>
+
+        🆔 <b>Employee ID:</b> ${data.employee_id}<br>
+
+        📅 <b>DOB:</b> ${data.dob ? new Date(data.dob).toLocaleDateString() : "-"}<br>
+        🗓 <b>Joining:</b> ${data.joining_date ? new Date(data.joining_date).toLocaleDateString() : "-"}<br>
+
+        🪪 <b>PAN:</b> ${data.pan_no || "-"}<br>
+        🧾 <b>Aadhar:</b> ${data.aadhar_no || "-"}<br>
+
+        📞 <b>Mobile:</b> ${data.mobile_no || "-"}<br>
+        👨‍👩‍👦 <b>Father:</b> ${data.father_mobile_no || "-"}<br>
+        👩 <b>Mother:</b> ${data.mother_mobile_no || "-"}<br>
+
+        ✉️ <b>Personal Email:</b> ${data.personal_email || "-"}<br>
+        🏢 <b>Office Email:</b> ${data.office_email || "-"}<br>
+
+        📍 <b>Location:</b> ${data.location || "-"}<br>
+
+        <hr>
+
+        🏦 <b>Bank:</b> ${data.bank_name || "-"}<br>
+        💳 <b>Account No:</b> ${data.account_no || "-"}<br>
+        🏷 <b>IFSC:</b> ${data.ifsc || "-"}<br>
+        🌿 <b>Branch:</b> ${data.bank_branch || "-"}
+      </div>
+    `;
+
+    document.getElementById("modalTitle").textContent = "Employee Info";
+    document.getElementById("infoBackdrop").classList.add("show");
+
+  } catch (err) {
+    console.error(err);
+    showToast(err.message || "Failed to load employee info");
+  }
 }
 
 // window.openManagerInfo = function (userId) {
