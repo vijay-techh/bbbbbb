@@ -310,6 +310,14 @@
       display: none !important;
     }
 
+    .dealer-mode .dealer-hidden {
+      display: none !important;
+    }
+
+    .dealer-mode .dealer-visible {
+      display: block !important;
+    }
+
     .cibil-section {
       background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
       border-color: #0ea5e9;
@@ -639,7 +647,7 @@
     <form id="leadForm">
 
     <!-- BASIC -->
-    <div class="section">
+    <div class="section dealer-visible">
       <div class="section-header">
         <h3>Basic Information</h3>
       </div>
@@ -689,7 +697,7 @@
       </div>
     </div>
 
-<div class="section">
+<div class="section dealer-visible">
   <div class="section-header">
     <h3>Vehicle Information</h3>
   </div>
@@ -752,7 +760,7 @@
 
 
     <!-- LOAN -->
-<div class="section">
+<div class="section dealer-visible">
   <div class="section-header">
     <h3>Loan Information</h3>
   </div>
@@ -839,7 +847,7 @@
 
 
 <!-- PROFILE -->
-<div class="section">
+<div class="section dealer-visible">
   <div class="section-header">
     <h3>Applicant Profile</h3>
   </div>
@@ -935,7 +943,7 @@
 
 
 <!-- CURRENT ADDRESS -->
-<div class="section">
+<div class="section dealer-hidden">
   <div class="section-header">
     <h3>Current Address</h3>
   </div>
@@ -991,7 +999,7 @@
 </div>
 
 <!-- PERMANENT ADDRESS -->
-<div class="section">
+<div class="section dealer-hidden">
   <div class="section-header">
     <h3>Permanent Address</h3>
 
@@ -1052,7 +1060,7 @@
 </div>
 
 <!-- EMPLOYMENT & OFFICE -->
-<div class="section">
+<div class="section dealer-hidden">
   <h3>Employment & Office</h3>
 
   <div class="grid">
@@ -1116,7 +1124,7 @@
 </div>
 
 <!-- REF CONTACT -->
-<div class="section">
+<div class="section dealer-hidden">
   <h3>Ref Contact</h3>
 
   <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
@@ -1147,7 +1155,7 @@
 
 
 <!-- NOMINEE -->
-<div class="section">
+<div class="section dealer-hidden">
   <h3>Nominee Information</h3>
 
   <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
@@ -1196,7 +1204,7 @@
 
 
     <!-- CIBIL SNAPSHOT -->
-    <div class="section cibil-section">
+    <div class="section cibil-section dealer-hidden">
       <div class="section-header">
         <h3>CIBIL DETAILS</h3>
         <button
@@ -1246,7 +1254,7 @@
 
 
 <!-- ADDITIONAL APPLICANTS -->
-<div class="section" id="additionalApplicantsSection">
+<div class="section dealer-hidden" id="additionalApplicantsSection">
   <div class="section-header">
     <h3>Additional Applicants</h3>
     <button
@@ -1273,7 +1281,7 @@
 
 
     <!-- BANK / FINANCE -->
-    <div class="section">
+    <div class="section dealer-hidden">
       <div class="section-header">
         <h3>Bank / Finance Information</h3>
       </div>
@@ -1382,14 +1390,14 @@
       </div>
     </div>
 
-    <div class="section">
+    <div class="section dealer-hidden">
       <h3>Remarks</h3>
       <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
         <textarea id="remarks" rows="4"></textarea>
       </div>
     </div>
 
-    <div class="section">
+    <div class="section dealer-hidden">
       <h3>Loan Stage</h3>
       <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
         <select id="loanStage" required>
@@ -1400,7 +1408,7 @@
     </div>
 
     <!-- DISBURSED LOAN INFORMATION -->
-    <div id="disbursedFields" class="section hidden">
+    <div id="disbursedFields" class="section hidden dealer-hidden">
   <h3>Loan Information</h3>
 
   <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
@@ -1505,7 +1513,7 @@
 </div>
 
 
-<div id="utrFields" class="section hidden">
+<div id="utrFields" class="section hidden dealer-hidden">
   <h3>UTR Information</h3>
 
   <div id="paymentContainer"></div>
@@ -1525,7 +1533,7 @@
 </div>
 
 
-    <div id="motorInsuranceFields" class="section hidden">
+    <div id="motorInsuranceFields" class="section hidden dealer-hidden">
       <h3>Motor Insurance</h3>
 
       <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
@@ -1560,7 +1568,7 @@
 
 
     <!-- PDD STATUS -->
-    <div id="pddStatusFields" class="section hidden">
+    <div id="pddStatusFields" class="section hidden dealer-hidden">
       <h3>PDD Status</h3>
 
       <div class="grid" style="grid-template-columns: repeat(4, 1fr);">

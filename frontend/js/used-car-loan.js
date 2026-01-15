@@ -124,6 +124,232 @@ function toggleBasicFieldsBySource() {
 }
 
 /* =========================
+   ROLE-BASED FIELD VISIBILITY (DEALER ONLY)
+========================= */
+
+// Initialize role-based field visibility for dealers only
+function initializeRoleBasedVisibility() {
+  const user = getUserFromStorage();
+  if (!user) return;
+
+  // Only apply restrictions for dealers
+  if (user.role === 'dealer') {
+    // Add dealer mode class to body
+    document.body.classList.add('dealer-mode');
+    
+    // Hide all dealer-hidden sections
+    const hiddenSections = document.querySelectorAll('.dealer-hidden');
+    hiddenSections.forEach(section => {
+      section.style.display = 'none';
+    });
+    
+    // Show only dealer-visible sections (they're already visible by default)
+    const visibleSections = document.querySelectorAll('.dealer-visible');
+    visibleSections.forEach(section => {
+      section.style.display = 'block';
+    });
+    
+    // Remove required attribute from hidden fields to prevent validation issues
+    const hiddenFields = document.querySelectorAll('.dealer-hidden input[required], .dealer-hidden select[required], .dealer-hidden textarea[required]');
+    hiddenFields.forEach(field => {
+      field.removeAttribute('required');
+      field.dataset.wasRequired = 'true'; // Mark as was required for later
+    });
+    
+    // Update form header for dealer
+    updateFormHeaderForDealer();
+    
+    // Add submit button for dealer
+    addDealerSubmitButton();
+  }
+  // For admin, manager, and employee - do nothing, show full form
+}
+
+// Get user from localStorage
+function getUserFromStorage() {
+  try {
+    const rawUser = localStorage.getItem('user');
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch (error) {
+    console.error('Error getting user from storage:', error);
+    return null;
+  }
+}
+
+// Update form header for dealer
+function updateFormHeaderForDealer() {
+  const headerTitle = document.querySelector('.form-header h1');
+  const headerDescription = document.querySelector('.form-header p');
+  
+  if (headerTitle) {
+    headerTitle.textContent = 'Used Car Loan Application - Dealer Portal';
+  }
+  
+  if (headerDescription) {
+    headerDescription.textContent = 'Fill in the basic information below. Our team will complete the remaining details.';
+  }
+}
+
+// Add submit button for dealer
+function addDealerSubmitButton() {
+  const form = document.getElementById('leadForm');
+  if (!form) return;
+  
+  // Check if dealer submit button already exists
+  if (document.getElementById('dealerSubmitBtn')) return;
+  
+  const submitSection = document.createElement('div');
+  submitSection.style.cssText = 'text-align: center; margin: 2rem 0; padding: 2rem; background: #f8fafc; border-radius: 12px; border: 2px dashed #d1d5db;';
+  
+  submitSection.innerHTML = `
+    <p style="margin: 0 0 1rem 0; color: #6b7280; font-weight: 500;">
+      📋 Once you submit this form, our team will review and complete the remaining information.
+    </p>
+    <button type="button" id="dealerSubmitBtn" class="btn btn-primary" style="background: #10b981; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+      Submit Application for Review
+    </button>
+  `;
+  
+  form.appendChild(submitSection);
+  
+  // Add click handler for dealer submit
+  document.getElementById('dealerSubmitBtn').addEventListener('click', handleDealerSubmit);
+}
+
+// Handle dealer form submission
+function handleDealerSubmit() {
+  const form = document.getElementById('leadForm');
+  if (!form) return;
+  
+  // Validate only visible fields
+  const visibleRequiredFields = form.querySelectorAll('.dealer-visible [required], .dealer-visible input[required], .dealer-visible select[required], .dealer-visible textarea[required]');
+  let isValid = true;
+  let firstInvalidField = null;
+  
+  // Clear previous validation states
+  visibleRequiredFields.forEach(field => {
+    field.style.borderColor = '';
+  });
+  
+  // Validate visible required fields
+  visibleRequiredFields.forEach(field => {
+    if (!field.value.trim()) {
+      field.style.borderColor = '#ef4444';
+      if (!firstInvalidField) firstInvalidField = field;
+      isValid = false;
+    }
+  });
+  
+  if (!isValid) {
+    alert('Please fill in all required fields before submitting.');
+    if (firstInvalidField) {
+      firstInvalidField.focus();
+      firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return;
+  }
+  
+  // Show confirmation
+  if (confirm('Are you sure you want to submit this application? Our team will review and complete the remaining details.')) {
+    // Mark as dealer submitted
+    markAsDealerSubmitted();
+    
+    // Submit to server with dealer assignment logic
+    submitDealerForm();
+    
+    // Show success message
+    showDealerSuccessMessage();
+  }
+}
+
+// Submit dealer form to server
+function submitDealerForm() {
+  const form = document.getElementById('leadForm');
+  if (!form) return;
+  
+  const user = getUserFromStorage();
+  if (!user) {
+    alert('User session not found. Please login again.');
+    return;
+  }
+  
+  // Collect all form data
+  const formData = new FormData(form);
+  const data = {};
+  
+  // Add all form fields
+  for (let [key, value] of formData.entries()) {
+    data[key] = value;
+  }
+  
+  // Add user information
+  data.userId = user.id;
+  data.role = user.role;
+  data.loanType = data.loanType || 'used-car-loan';
+  data.loanStage = 'Lead';
+  
+  // Mark as dealer submitted
+  data.dealerSubmitted = 'true';
+  data.dealerSubmittedTime = new Date().toISOString();
+  
+  console.log('Submitting dealer lead:', data);
+  
+  // Submit to server
+  fetch('/api/leads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      console.log('Dealer lead submitted successfully:', result.loanId);
+      // Update loan ID if server generated a new one
+      if (result.loanId && data.loanId !== result.loanId) {
+        document.getElementById('loanId').value = result.loanId;
+      }
+    } else {
+      console.error('Failed to submit dealer lead:', result.error);
+      alert('Failed to submit application. Please try again.');
+    }
+  })
+  .catch(error => {
+    console.error('Error submitting dealer lead:', error);
+    alert('Error submitting application. Please try again.');
+  });
+}
+
+// Mark form as dealer submitted
+function markAsDealerSubmitted() {
+  const loanId = document.getElementById('loanId')?.value;
+  if (loanId) {
+    localStorage.setItem(`dealer_submitted_${loanId}`, 'true');
+    localStorage.setItem(`dealer_submitted_time_${loanId}`, new Date().toISOString());
+  }
+}
+
+// Show success message for dealer
+function showDealerSuccessMessage() {
+  const submitSection = document.getElementById('dealerSubmitBtn')?.parentElement;
+  if (submitSection) {
+    submitSection.innerHTML = `
+      <div style="text-align: center; padding: 2rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+        <h3 style="color: #10b981; margin: 0 0 0.5rem 0;">Application Submitted Successfully!</h3>
+        <p style="color: #6b7280; margin: 0;">
+          Your application has been submitted for review. Our team will complete the remaining details and contact you if needed.
+        </p>
+        <button type="button" onclick="window.location.href='/dashboard.html'" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+          Back to Dashboard
+        </button>
+      </div>
+    `;
+  }
+}
+
+/* =========================
    AUTOMATIC LOAN ID GENERATION
 ========================= */
 function generateLoanId() {
@@ -149,6 +375,9 @@ function incrementLoanCounter(storageKey, currentCounter) {
 
 // Set loan ID and initialize form when page loads
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize role-based field visibility for dealers only
+  initializeRoleBasedVisibility();
+  
   // Initialize progress tracking
   updateProgress();
   

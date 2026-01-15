@@ -157,7 +157,38 @@ app.post("/api/leads", async (req, res) => {
       stage: req.body.loanStage || "Lead"
     });
 
-    // Insert lead with proper created_by
+    // 🎯 DEALER LEAD ASSIGNMENT: Auto-assign dealer leads to employees/managers
+    let leadData = req.body;
+    if (req.body.role === 'dealer') {
+      try {
+        console.log("🎯 Dealer lead detected, finding assignment...");
+        
+        // Find available employees/managers to assign the lead to
+        // Strategy: Find any active employee or manager
+        const assignmentResult = await pool.query(
+          `SELECT id, role FROM users 
+           WHERE role IN ('employee', 'manager') 
+           AND status = 'active' 
+           AND deleted_at IS NULL 
+           ORDER BY role DESC, last_login DESC NULLS LAST
+           LIMIT 1`,
+          []
+        );
+        
+        if (assignmentResult.rows.length > 0) {
+          const assignedTo = assignmentResult.rows[0];
+          leadData.assignedTo = assignedTo.id.toString();
+          console.log(`✅ Dealer lead ${loanId} assigned to ${assignedTo.role} ID: ${assignedTo.id}`);
+        } else {
+          console.log("⚠️ No active employees/managers found for assignment");
+        }
+      } catch (assignErr) {
+        console.error("❌ Dealer lead assignment error:", assignErr);
+        // Continue without assignment if error occurs
+      }
+    }
+
+    // Insert lead with proper created_by and assignment data
     await pool.query(
       `INSERT INTO leads (loan_id, loan_type, stage, data, created_by) 
        VALUES ($1, $2, $3, $4, $5)`,
@@ -165,16 +196,17 @@ app.post("/api/leads", async (req, res) => {
         loanId,
         req.body.loanType,
         req.body.loanStage || "Lead",
-        req.body,
+        leadData,  // Use modified leadData with assignment
         userId  // Always populated, never NULL
       ]
     );
 
     console.log("LEAD CREATED SUCCESSFULLY:", loanId);
 
-    // 🎯 NOTIFICATION SYSTEM: Create notifications for admins if creator is employee or manager
+    // NOTIFICATION SYSTEM: Create notifications for admins if creator is employee or manager
+    // DEALER NOTIFICATION: Notify assigned employee/manager
     try {
-      console.log("🔔 Starting notification creation process...");
+      console.log(" Starting notification creation process...");
       
       // Get creator details
       const creatorResult = await pool.query(
@@ -188,9 +220,31 @@ app.post("/api/leads", async (req, res) => {
         const creator = creatorResult.rows[0];
         console.log("Creator found:", creator);
         
-        // Only create notifications for employees and managers
-        if (creator.role === 'employee' || creator.role === 'manager') {
-          console.log("✅ Creator is employee/manager, creating notifications...");
+        // DEALER LEAD NOTIFICATION: Notify assigned employee/manager
+        if (creator.role === 'dealer' && leadData.assignedTo) {
+          console.log(" Dealer lead with assignment, notifying assigned user...");
+          
+          const assignedUserResult = await pool.query(
+            "SELECT username, role FROM users WHERE id = $1 AND deleted_at IS NULL",
+            [leadData.assignedTo]
+          );
+          
+          if (assignedUserResult.rows.length > 0) {
+            const assignedUser = assignedUserResult.rows[0];
+            const notificationMessage = `New dealer lead ${loanId} assigned to you from ${creator.username}`;
+            
+            await pool.query(
+              `INSERT INTO notifications (user_id, message, is_read, created_at, type) 
+               VALUES ($1, $2, false, NOW(), 'dealer_lead_assigned')`,
+              [leadData.assignedTo, notificationMessage]
+            );
+            
+            console.log(` Notified ${assignedUser.role} ${assignedUser.username}: ${notificationMessage}`);
+          }
+        }
+        // Regular notification for employees and managers
+        else if (creator.role === 'employee' || creator.role === 'manager') {
+          console.log(" Creator is employee/manager, creating notifications...");
           
           // Get all admin users
           const adminsResult = await pool.query(
@@ -213,18 +267,18 @@ app.post("/api/leads", async (req, res) => {
               );
             }
             
-            console.log(`✅ Created notifications for ${adminsResult.rows.length} admins: ${notificationMessage}`);
+            console.log(` Created notifications for ${adminsResult.rows.length} admins: ${notificationMessage}`);
           } else {
-            console.log("❌ No admin users found");
+            console.log(" No admin users found");
           }
         } else {
-          console.log(`❌ Creator is ${creator.role}, not creating notifications`);
+          console.log(` Creator is ${creator.role}, not creating notifications`);
         }
       } else {
-        console.log("❌ Creator not found in database");
+        console.log(" Creator not found in database");
       }
     } catch (notificationErr) {
-      console.error("❌ NOTIFICATION CREATION ERROR:", notificationErr);
+      console.error(" NOTIFICATION CREATION ERROR:", notificationErr);
       // Don't fail the lead creation if notification fails
     }
 
@@ -246,7 +300,7 @@ app.get("/api/leads/:loanId", async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ success: false });
     res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
+    console.error("Get lead error:", err);
     res.status(500).json({ success: false });
   }
 });
@@ -257,8 +311,8 @@ app.put("/api/leads/:loanId", async (req, res) => {
     await pool.query(`UPDATE leads SET stage = $1, data = $2 WHERE loan_id = $3`, [req.body.loanStage || "Lead", req.body, loanId]);
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+    console.error("Update lead error:", err);
+    res.status(500).json({ error: "Failed to update lead" });
   }
 });
 
@@ -274,7 +328,7 @@ app.get("/api/leads", async (req, res) => {
     let query = "";
     let params = [];
 
-    // ✅ ADMIN → ALL LEADS
+    // ADMIN → ALL LEADS
     if (role === "admin") {
       query = `
         SELECT *
@@ -283,7 +337,7 @@ app.get("/api/leads", async (req, res) => {
       `;
     }
 
-    // ✅ MANAGER → own + assigned employees
+    // MANAGER → own + assigned employees + dealer leads assigned to them or their employees
     else if (role === "manager") {
       query = `
         SELECT *
@@ -294,12 +348,40 @@ app.get("/api/leads", async (req, res) => {
              FROM manager_employees
              WHERE manager_id = $1
            )
+           OR (created_by IN (
+             SELECT id FROM users WHERE role = 'dealer'
+           ) AND data->>'assignedTo'::text = $1::text)
+           OR (created_by IN (
+             SELECT id FROM users WHERE role = 'dealer'
+           ) AND data->>'assignedTo'::text IN (
+             SELECT employee_id::text FROM manager_employees WHERE manager_id = $1
+           ))
         ORDER BY created_at DESC
       `;
       params = [userId];
+      
+      console.log(`🔍 Manager ${userId} fetching leads with query:`, query);
+      console.log(`🔍 Manager ${userId} fetching leads with params:`, params);
     }
 
-    // ✅ EMPLOYEE → only own
+    // EMPLOYEE → own + dealer leads assigned to them
+    else if (role === "employee") {
+      query = `
+        SELECT *
+        FROM leads
+        WHERE created_by = $1
+           OR (created_by IN (
+             SELECT id FROM users WHERE role = 'dealer'
+           ) AND data->>'assignedTo'::text = $1::text)
+        ORDER BY created_at DESC
+      `;
+      params = [userId];
+      
+      console.log(`🔍 Employee ${userId} fetching leads with query:`, query);
+      console.log(`🔍 Employee ${userId} fetching leads with params:`, params);
+    }
+
+    // DEALER → only own
     else {
       query = `
         SELECT *
