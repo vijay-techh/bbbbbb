@@ -328,7 +328,7 @@ app.get("/api/leads", async (req, res) => {
     let query = "";
     let params = [];
 
-    // ADMIN → ALL LEADS
+    /* ================= ADMIN ================= */
     if (role === "admin") {
       query = `
         SELECT *
@@ -337,52 +337,66 @@ app.get("/api/leads", async (req, res) => {
       `;
     }
 
-    // MANAGER → own + assigned employees + dealer leads assigned to them or their employees
+    /* ================= MANAGER ================= */
     else if (role === "manager") {
       query = `
         SELECT *
         FROM leads
-        WHERE created_by = $1
-           OR created_by IN (
-             SELECT employee_id
-             FROM manager_employees
-             WHERE manager_id = $1
-           )
-           OR (created_by IN (
-             SELECT id FROM users WHERE role = 'dealer'
-           ) AND data->>'assignedTo'::text = $1::text)
-           OR (created_by IN (
-             SELECT id FROM users WHERE role = 'dealer'
-           ) AND data->>'assignedTo'::text IN (
-             SELECT employee_id::text FROM manager_employees WHERE manager_id = $1
-           ))
+        WHERE
+          -- own leads
+          created_by = $1
+
+          -- employee leads
+          OR created_by IN (
+            SELECT employee_id
+            FROM manager_employees
+            WHERE manager_id = $1
+          )
+
+          -- dealer leads assigned to manager
+          OR created_by IN (
+            SELECT dealer_id
+            FROM employee_dealers
+            WHERE employee_id = $1
+          )
+
+          -- dealer leads assigned to manager's employees
+          OR created_by IN (
+            SELECT dealer_id
+            FROM employee_dealers
+            WHERE employee_id IN (
+              SELECT employee_id
+              FROM manager_employees
+              WHERE manager_id = $1
+            )
+          )
         ORDER BY created_at DESC
       `;
       params = [userId];
-      
-      console.log(`🔍 Manager ${userId} fetching leads with query:`, query);
-      console.log(`🔍 Manager ${userId} fetching leads with params:`, params);
     }
 
-    // EMPLOYEE → own + dealer leads assigned to them
+    /* ================= EMPLOYEE ================= */
     else if (role === "employee") {
       query = `
         SELECT *
         FROM leads
-        WHERE created_by = $1
-           OR (created_by IN (
-             SELECT id FROM users WHERE role = 'dealer'
-           ) AND data->>'assignedTo'::text = $1::text)
+        WHERE
+          -- own leads
+          created_by = $1
+
+          -- dealer leads assigned to employee
+          OR created_by IN (
+            SELECT dealer_id
+            FROM employee_dealers
+            WHERE employee_id = $1
+          )
         ORDER BY created_at DESC
       `;
       params = [userId];
-      
-      console.log(`🔍 Employee ${userId} fetching leads with query:`, query);
-      console.log(`🔍 Employee ${userId} fetching leads with params:`, params);
     }
 
-    // DEALER → only own
-    else {
+    /* ================= DEALER ================= */
+    else if (role === "dealer") {
       query = `
         SELECT *
         FROM leads

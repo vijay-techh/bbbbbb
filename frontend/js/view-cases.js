@@ -9,15 +9,15 @@ const targetRole = urlParams.get('role');
 
 let fetchUrl;
 
-if (user.role === "admin" && targetUserId && targetRole === "employee") {
-  // Admin viewing specific employee's leads
-  fetchUrl = `/api/leads?userId=${targetUserId}&role=${targetRole}`;
+if (user.role === "admin" && targetUserId) {
+  // Admin ALWAYS stays admin
+  fetchUrl = `/api/leads?userId=${user.id}&role=admin&viewUser=${targetUserId}`;
 } else {
-  // Normal behavior for admin/manager/employee viewing their own leads
   fetchUrl = `/api/leads?userId=${user.id}&role=${user.role}`;
 }
 
 fetch(fetchUrl)
+
   .then(res => res.json())
   .then(leads => {
     allLeads = leads;
@@ -73,13 +73,12 @@ async function fetchLeads() {
     const targetUsername = urlParams.get('username');
     const targetRole = urlParams.get('role');
 
-    if (user.role === "admin" && targetUserId && targetRole === "employee") {
-      // Admin viewing specific employee's leads
-      fetchUrl = `/api/leads?userId=${targetUserId}&role=${targetRole}`;
+    if (user.role === "admin" && targetUserId) {
+      fetchUrl = `/api/leads?userId=${user.id}&role=admin&viewUser=${targetUserId}`;
     } else {
-      // Normal behavior for admin/manager/employee viewing their own leads
       fetchUrl = `/api/leads?userId=${user.id}&role=${user.role}`;
     }
+
 
     const res = await fetch(fetchUrl);
 
