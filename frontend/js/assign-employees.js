@@ -112,7 +112,13 @@ async function loadCurrentAssignments(bossId) {
   try {
     console.log("Boss ID (before):", bossId, typeof bossId);
 
-    const res = await fetch(`/api/admin/manager-employees/${bossId}`);
+if (selectedBoss.role === "employee") {
+  const res = await fetch(`/api/admin/employee-dealers/${bossId}`);
+  currentAssignments = (await res.json()).map(Number);
+} else {
+  const res = await fetch(`/api/admin/manager-employees/${bossId}`);
+  currentAssignments = (await res.json()).map(Number);
+}
     const data = await res.json();
 
     console.log("Assignments raw:", data);
@@ -269,41 +275,32 @@ function clearSelection() {
 }
 
 async function saveAssignments() {
-  const managerId = document.getElementById("managerSelect").value;
+  const managerId = Number(document.getElementById("managerSelect").value);
   if (!managerId) return showToast("Select a manager first");
 
   const checked = [...document.querySelectorAll("#employeeList input:checked")]
     .map(cb => Number(cb.value));
 
-  // Get the selected boss details
-  const selectedBoss = [...managers, ...employees].find(u => u.id === Number(managerId));
-  
-  // Validate assignment rules
-  for (const employeeId of checked) {
-    const employee = [...employees, ...dealers].find(u => u.id === employeeId);
-    
-    if (!employee) continue;
-    
-    // Rules:
-    // Employee → Manager (allowed)
-    // Dealer → Manager (allowed) 
-    // Dealer → Employee (allowed)
-    // Employee → Employee (NOT allowed)
-    // Manager → Anyone (NOT allowed)
-    // Dealer → Dealer (NOT allowed)
-    
-    if (employee.role === 'employee' && selectedBoss.role === 'employee') {
-      showToast(`❌ Cannot assign Employee "${employee.username}" to Employee "${selectedBoss.username}". Employees can only be assigned to Managers.`);
+  const selectedBoss = [...managers, ...employees].find(u => u.id === managerId);
+  if (!selectedBoss) return;
+
+  // VALIDATION
+  for (const childId of checked) {
+    const child = [...employees, ...dealers].find(u => u.id === childId);
+    if (!child) continue;
+
+    if (child.role === "employee" && selectedBoss.role === "employee") {
+      showToast("❌ Employee cannot be assigned to Employee");
       return;
     }
-    
-    if (employee.role === 'manager') {
-      showToast(`❌ Cannot assign Manager "${employee.username}" to anyone. Managers cannot be assigned.`);
+
+    if (child.role === "manager") {
+      showToast("❌ Manager cannot be assigned");
       return;
     }
-    
-    if (employee.role === 'dealer' && selectedBoss.role === 'dealer') {
-      showToast(`❌ Cannot assign Dealer "${employee.username}" to Dealer "${selectedBoss.username}". Dealers can only be assigned to Managers or Employees.`);
+
+    if (child.role === "dealer" && selectedBoss.role === "dealer") {
+      showToast("❌ Dealer cannot be assigned to Dealer");
       return;
     }
   }
@@ -311,52 +308,69 @@ async function saveAssignments() {
   const toAdd = checked.filter(id => !currentAssignments.includes(id));
   const toRemove = currentAssignments.filter(id => !checked.includes(id));
 
-try {
-  // ADD new assignments
-  for (const employeeId of toAdd) {
-    await fetch("/api/admin/assign-employee", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        managerId: Number(managerId),
-        employeeId: Number(employeeId)
-      })
-    });
-  }   // ← THIS BRACE WAS MISSING
+  try {
+    /* ---------- ADD ---------- */
+    for (const childId of toAdd) {
+      if (selectedBoss.role === "employee") {
+        // EMPLOYEE → DEALER
+        await fetch("/api/admin/assign-dealer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: managerId,
+            dealerId: childId
+          })
+        });
+      } else {
+        // MANAGER → EMPLOYEE
+        await fetch("/api/admin/assign-employee", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            managerId,
+            employeeId: childId
+          })
+        });
+      }
+    }
 
-  // REMOVE unchecked assignments
-  for (const employeeId of toRemove) {
-    await fetch("/api/admin/unassign-employee", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        managerId: Number(managerId),
-        employeeId: Number(employeeId)
-      })
-    });
-  }
+    /* ---------- REMOVE ---------- */
+    for (const childId of toRemove) {
+      if (selectedBoss.role === "employee") {
+        // EMPLOYEE → DEALER
+        await fetch("/api/admin/unassign-dealer", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: managerId,
+            dealerId: childId
+          })
+        });
+      } else {
+        // MANAGER → EMPLOYEE
+        await fetch("/api/admin/unassign-employee", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            managerId,
+            employeeId: childId
+          })
+        });
+      }
+    }
 
-  if (toAdd.length > 0 && toRemove.length > 0) {
-    showToast(`Added ${toAdd.length} and removed ${toRemove.length} assignment(s)`);
-  } else if (toAdd.length > 0) {
-    showToast(`Successfully assigned ${toAdd.length} user(s)`);
-  } else if (toRemove.length > 0) {
-    showToast(`Successfully unassigned ${toRemove.length} user(s)`);
-  } else {
-    showToast("No changes made");
-  }
+    showToast("Assignments updated successfully");
 
-  await loadCurrentAssignments(managerId);
-  setTimeout(async () => {
+    await loadCurrentAssignments(managerId);
     await loadAllAssignments();
     await loadEmployeeAssignments();
-  }, 500);
 
-} catch (err) {
-  console.error(err);
-  showToast("Failed to save assignments");
+  } catch (err) {
+    console.error(err);
+    showToast("Failed to save assignments");
+  }
 }
-}
+
 
 async function loadAllAssignments() {
   try {
@@ -677,7 +691,7 @@ async function unassignAllFromEmployee(employeeId, employeeName) {
       try {
         console.log(`Attempting to unassign dealer ${dealerId} from employee ${employeeId}`);
         
-        const unassignRes = await fetch("/api/admin/unassign-employee", {
+        const unassignRes = await fetch("/api/admin/unassign-dealer", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -723,7 +737,37 @@ async function unassignAllFromEmployee(employeeId, employeeName) {
 async function unassignSingle(managerId, employeeId, managerName, employeeName) {
   if (!confirm(`Unassign ${employeeName} from ${managerName}?`)) return;
 
+  // 🔥 FIND WHO THE BOSS IS
+  const selectedBoss = [...managers, ...employees].find(
+    u => u.id === Number(managerId)
+  );
+
   try {
+
+    /* ===========================
+       EMPLOYEE → DEALER
+    ============================ */
+    if (selectedBoss?.role === "employee") {
+      const res = await fetch("/api/admin/unassign-dealer", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: Number(managerId),
+          dealerId: Number(employeeId)
+        })
+      });
+
+      if (!res.ok) throw new Error("Unassign dealer failed");
+
+      showToast(`${employeeName} unassigned from ${managerName}`);
+
+      await loadEmployeeAssignments();
+      return; // ⛔ IMPORTANT
+    }
+
+    /* ===========================
+       MANAGER → EMPLOYEE
+    ============================ */
     const res = await fetch("/api/admin/unassign-employee", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -737,7 +781,6 @@ async function unassignSingle(managerId, employeeId, managerName, employeeName) 
 
     showToast(`${employeeName} unassigned from ${managerName}`);
 
-    // Refresh everything
     await loadCurrentAssignments(managerId);
     await loadAllAssignments();
     await loadEmployeeAssignments();

@@ -899,6 +899,42 @@ app.delete("/api/admin/unassign-employee", async (req, res) => {
   }
 });
 
+
+
+
+
+
+app.post("/api/admin/assign-dealer", async (req, res) => {
+  const { employeeId, dealerId } = req.body;
+
+  if (!employeeId || !dealerId) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  await pool.query(
+    `INSERT INTO employee_dealers (employee_id, dealer_id)
+     VALUES ($1, $2)
+     ON CONFLICT DO NOTHING`,
+    [employeeId, dealerId]
+  );
+
+  res.json({ success: true });
+});
+
+app.delete("/api/admin/unassign-dealer", async (req, res) => {
+  const { employeeId, dealerId } = req.body;
+
+  await pool.query(
+    `DELETE FROM employee_dealers
+     WHERE employee_id = $1 AND dealer_id = $2`,
+    [employeeId, dealerId]
+  );
+
+  res.json({ success: true });
+});
+
+
+
 // ----------------- Admin Notifications -----------------
 app.get("/api/admin/notifications", async (req, res) => {
   try {
