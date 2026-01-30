@@ -450,19 +450,41 @@
             }
         }
 
-                .mini-unassign {
-        margin-left: 6px;
-        border: none;
-        background: none;
-        color: #ef4444;
-        font-weight: bold;
-        cursor: pointer;
-        font-size: 12px;
-        }
+            .mini-unassign {
+                margin-left: 6px;
+                border: none;
+                background: none;
+                color: #ef4444;
+                font-weight: bold;
+                cursor: pointer;
+                font-size: 12px;
+                }
 
-        .mini-unassign:hover {
-        color: #dc2626;
-        }
+                .mini-unassign:hover {
+                color: #dc2626;
+            }
+
+        .assignment-container.four-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            }
+
+            .grid-box {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+            }
+
+
+
+        .actions-section {
+            display: none;
+            }
+
+
+
 
     </style>
 </head>
@@ -479,38 +501,70 @@
             </div>
         </div>
 
-        <div class="assignment-container">
-            <!-- Manager Selection Section -->
-            <div class="assignment-section">
-                <div class="section-header">
-                    <div class="section-icon">👔</div>
-                    <div class="section-title">
-                        <h3>Managers + Employees</h3>
-                        <p>Choose a manager to assign employees to, or select employees to assign to managers</p>
-                    </div>
-                </div>
-                <select id="managerSelect" class="manager-select">
-                    <option value="">Loading managers...</option>
-                </select>
-            </div>
+<div class="assignment-container four-grid">
 
-            <!-- Employees Section -->
-            <div class="assignment-section">
-                <div class="section-header">
-                    <div class="section-icon">👥</div>
-                    <div class="section-title">
-                        <h3>Available Employees + Dealers</h3>
-                        <p>These are the people who can be assigned to managers</p>
-                    </div>
-                </div>
-                <div id="employeeList" class="employees-grid">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading employees...
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- Managers -->
+  <div class="grid-box">
+    <div class="section-header">
+      <div class="section-icon">👔</div>
+      <div class="section-title">
+        <h3>Managers</h3>
+        <p>Select manager</p>
+      </div>
+    </div>
+
+
+
+    <div id="managerList" class="employees-grid"></div>
+  </div>
+
+  <!-- Available Employees -->
+  <div class="grid-box">
+    <div class="section-header">
+      <div class="section-icon">👥</div>
+      <div class="section-title">
+        <h3>Available Employees</h3>
+        <p>Employees under manager</p>
+      </div>
+    </div>
+
+
+
+    <div id="availableEmployees" class="employees-grid"></div>
+  </div>
+
+  <!-- Employees -->
+  <div class="grid-box">
+    <div class="section-header">
+      <div class="section-icon">🧑‍💼</div>
+      <div class="section-title">
+        <h3>Employees</h3>
+        <p>Select employee</p>
+      </div>
+    </div>
+
+
+
+    <div id="employeeListGrid" class="employees-grid"></div>
+  </div>
+
+  <!-- Available Dealers -->
+  <div class="grid-box">
+    <div class="section-header">
+      <div class="section-icon">🏪</div>
+      <div class="section-title">
+        <h3>Available Dealers</h3>
+        <p>Dealers under employee</p>
+      </div>
+    </div>
+
+
+
+    <div id="availableDealers" class="employees-grid"></div>
+  </div>
+
+</div>
+
 
         <!-- Actions Section -->
         <div class="actions-section">

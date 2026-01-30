@@ -46,8 +46,6 @@ async function loadUsers() {
     console.log('Employees:', employees);
     console.log('Dealers:', dealers);
 
-    populateManagerSelect();
-    renderEmployees();
     loadAllAssignments();
     
     // Add search functionality
@@ -73,40 +71,7 @@ async function onManagerChange(e) {
   }
 }
 
-function populateManagerSelect() {
-  const mgrSelect = document.getElementById("managerSelect");
-  mgrSelect.innerHTML = "";
 
-  const defaultOption = document.createElement("option");
-  defaultOption.value = "";
-  defaultOption.textContent = "Select a manager or employee...";
-  mgrSelect.appendChild(defaultOption);
-
-  // Add managers to dropdown
-  managers.forEach(m => {
-    const opt = document.createElement("option");
-    opt.value = m.id;
-    opt.textContent = `${m.username} (Manager)`;
-    mgrSelect.appendChild(opt);
-  });
-
-  // Add employees to dropdown (they can be bosses)
-  employees.forEach(e => {
-    const opt = document.createElement("option");
-    opt.value = e.id;
-    opt.textContent = `${e.username} (Employee)`;
-    mgrSelect.appendChild(opt);
-  });
-
-  mgrSelect.addEventListener("change", onManagerChange);
-
-  // Auto-select first available manager
-  const availableManagers = [...managers, ...employees];
-  if (availableManagers.length > 0) {
-    mgrSelect.value = availableManagers[0].id;
-    loadCurrentAssignments(availableManagers[0].id);
-  }
-}
 
 async function loadCurrentAssignments(bossId) {
   try {
@@ -684,7 +649,8 @@ async function unassignAllFromEmployee(employeeId, employeeName) {
   }
 
   try {
-    const res = await fetch(`/api/admin/manager-employees/${employeeId}`);
+    // ✅ Correct API
+    const res = await fetch(`/api/admin/employee-dealers/${employeeId}`);
     const dealerIds = await res.json();
     
     if (!dealerIds || dealerIds.length === 0) {
@@ -697,30 +663,25 @@ async function unassignAllFromEmployee(employeeId, employeeName) {
     
     for (const dealerId of dealerIds) {
       try {
-        console.log(`Attempting to unassign dealer ${dealerId} from employee ${employeeId}`);
-        
+        // ✅ Correct unassign API + payload
         const unassignRes = await fetch("/api/admin/unassign-dealer", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            managerId: Number(employeeId),
-            employeeId: Number(dealerId)
+            employeeId: Number(employeeId),
+            dealerId: Number(dealerId)
           })
         });
 
-        console.log(`Unassign response status:`, unassignRes.status);
-        
         if (unassignRes.ok) {
-          const result = await unassignRes.json();
-          console.log(`Unassign success for dealer ${dealerId}:`, result);
           successCount++;
         } else {
-          const errorText = await unassignRes.text();
-          console.error(`Failed to unassign dealer ${dealerId}. Status: ${unassignRes.status}, Error: ${errorText}`);
           errorCount++;
+          const errTxt = await unassignRes.text();
+          console.error("Unassign dealer error:", errTxt);
         }
       } catch (err) {
-        console.error(`Exception when unassigning dealer ${dealerId}:`, err);
+        console.error("Dealer unassign exception:", err);
         errorCount++;
       }
     }
@@ -728,13 +689,17 @@ async function unassignAllFromEmployee(employeeId, employeeName) {
     if (successCount > 0 && errorCount === 0) {
       showToast(`Successfully unassigned ${successCount} dealer(s) from ${employeeName}`);
     } else if (successCount > 0) {
-      showToast(`Partially successful: unassigned ${successCount} dealer(s), ${errorCount} failed`);
+      showToast(`Partially unassigned: ${successCount} success, ${errorCount} failed`);
     } else {
-      showToast(`Failed to unassign any dealers from ${employeeName}. Check console for details.`);
+      showToast(`Failed to unassign dealers from ${employeeName}`);
     }
-    
-    // Refresh employee assignments table
+
+    // 🔄 Refresh UI
     await loadEmployeeAssignments();
+    if (selectedEmployeeId === employeeId) {
+      await renderAvailableDealersGrid();
+    }
+
   } catch (err) {
     console.error('Error in unassignAllFromEmployee:', err);
     showToast('Failed to unassign dealers');
@@ -801,7 +766,231 @@ async function unassignSingle(managerId, employeeId, managerName, employeeName) 
 
 
 
+function renderManagersGrid() {
+  const div = document.getElementById("managerList");
+  div.innerHTML = "";
+
+  managers.forEach(m => {
+    const el = document.createElement("div");
+    el.className = "employee-item";
+    el.textContent = m.username;
+    el.dataset.id = m.id;
+
+    el.onclick = () => {
+      selectedManagerId = m.id;
+      selectedEmployeeId = null;
+      highlightSelection("managerList", m.id);
+      renderAvailableEmployeesGrid();
+    };
+
+    div.appendChild(el);
+  });
+}
+
+
+async function renderAvailableEmployeesGrid() {
+  if (!selectedManagerId) return;
+
+  const res = await fetch(`/api/admin/manager-employees/${selectedManagerId}`);
+  const assignedIds = (await res.json()).map(Number);
+
+  const div = document.getElementById("availableEmployees");
+  div.innerHTML = "";
+
+  employees.forEach(emp => {
+    const el = document.createElement("div");
+    el.className = "employee-item";
+    el.textContent = emp.username;
+    el.dataset.id = emp.id;
+
+    if (assignedIds.includes(emp.id)) el.classList.add("selected");
+
+    el.onclick = async () => {
+      if (el.classList.contains("selected")) {
+        // unassign
+        await fetch("/api/admin/unassign-employee", {
+          method: "DELETE",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            managerId: selectedManagerId,
+            employeeId: emp.id
+          })
+        });
+      } else {
+
+
+    // assign
+    await fetch("/api/admin/assign-employee", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        managerId: selectedManagerId,
+        employeeId: emp.id
+      })
+    });
+
+      }
+
+      renderAvailableEmployeesGrid();
+      loadAllAssignments();
+    };
+
+    div.appendChild(el);
+  });
+}
+
+
+function renderEmployeesGrid() {
+  const div = document.getElementById("employeeListGrid");
+  div.innerHTML = "";
+
+  employees.forEach(e => {
+    const el = document.createElement("employee-item");    const box = document.createElement("div");
+    box.className = "employee-item";
+    box.textContent = e.username;
+    box.dataset.id = e.id;
+
+    box.onclick = () => {
+      selectedEmployeeId = e.id;
+      selectedManagerId = null;
+      highlightSelection("employeeListGrid", e.id);
+      renderAvailableDealersGrid();
+    };
+
+    div.appendChild(box);
+  });
+}
+
+async function renderAvailableDealersGrid() {
+  if (!selectedEmployeeId) return;
+
+  const res = await fetch(`/api/admin/employee-dealers/${selectedEmployeeId}`);
+  const assignedIds = (await res.json()).map(Number);
+
+  const div = document.getElementById("availableDealers");
+  div.innerHTML = "";
+
+  dealers.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "employee-item";
+    el.textContent = d.username;
+    el.dataset.id = d.id;
+
+    if (assignedIds.includes(d.id)) el.classList.add("selected");
+
+    el.onclick = async () => {
+      if (el.classList.contains("selected")) {
+        // unassign
+        await fetch("/api/admin/unassign-dealer", {
+          method: "DELETE",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            employeeId: selectedEmployeeId,
+            dealerId: d.id
+          })
+        });
+      } else {
+        // assign
+        await fetch("/api/admin/assign-dealer", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            employeeId: selectedEmployeeId,
+            dealerId: d.id
+          })
+        });
+      }
+
+      renderAvailableDealersGrid();
+      loadEmployeeAssignments();
+    };
+
+    div.appendChild(el);
+  });
+}
+
+
+function highlightSelection(containerId, id) {
+  document.querySelectorAll(`#${containerId} .employee-item`)
+    .forEach(i => i.classList.remove("selected"));
+
+  const el = document.querySelector(
+    `#${containerId} .employee-item[data-id='${id}']`
+  );
+  if (el) el.classList.add("selected");
+}
+
+
+async function buildAssignmentMaps() {
+  employeeToManagerMap.clear();
+  dealerToEmployeeMap.clear();
+
+  // MANAGER → EMPLOYEE
+  for (const manager of managers) {
+    const res = await fetch(`/api/admin/manager-employees/${manager.id}`);
+    if (res.ok) {
+      const empIds = await res.json();
+      empIds.forEach(eid => {
+        employeeToManagerMap.set(Number(eid), manager.id);
+      });
+    }
+  }
+
+  // EMPLOYEE → DEALER
+  for (const employee of employees) {
+    const res = await fetch(`/api/admin/employee-dealers/${employee.id}`);
+    if (res.ok) {
+      const dealerIds = await res.json();
+      dealerIds.forEach(did => {
+        dealerToEmployeeMap.set(Number(did), employee.id);
+      });
+    }
+  }
+
+  console.log("employeeToManagerMap", employeeToManagerMap);
+  console.log("dealerToEmployeeMap", dealerToEmployeeMap);
+}
+
+async function buildAssignmentMaps() {
+  employeeToManagerMap.clear();
+  dealerToEmployeeMap.clear();
+
+  // MANAGER → EMPLOYEE
+  for (const manager of managers) {
+    const res = await fetch(`/api/admin/manager-employees/${manager.id}`);
+    if (res.ok) {
+      const empIds = await res.json();
+      empIds.forEach(eid => {
+        employeeToManagerMap.set(Number(eid), manager.id);
+      });
+    }
+  }
+
+  // EMPLOYEE → DEALER
+  for (const employee of employees) {
+    const res = await fetch(`/api/admin/employee-dealers/${employee.id}`);
+    if (res.ok) {
+      const dealerIds = await res.json();
+      dealerIds.forEach(did => {
+        dealerToEmployeeMap.set(Number(did), employee.id);
+      });
+    }
+  }
+
+  console.log("employeeToManagerMap", employeeToManagerMap);
+  console.log("dealerToEmployeeMap", dealerToEmployeeMap);
+}
+
+
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-  loadUsers();
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadUsers();
+
+  // render pure grids only
+  renderManagersGrid();
+  renderEmployeesGrid();
+
+  // auto-load tables (no selection needed)
+  await loadAllAssignments();
+  await loadEmployeeAssignments();
 });
