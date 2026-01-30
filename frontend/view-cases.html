@@ -3,6 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>View All Cases | WheelsWeb</title>
   <link rel="stylesheet" href="/css/dashboard.css" />
   <style>
@@ -306,41 +307,172 @@
     }
     
     /* Responsive Design */
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
       .main {
-        padding: 16px;
+        padding: 20px;
         margin: 16px;
       }
       
       .toolbar {
+        padding: 16px;
+      }
+      
+      input.search {
+        width: 280px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .main {
+        padding: 16px;
+        margin: 12px;
+      }
+      
+      h2 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+      }
+      
+      .page-header {
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
+        text-align: center;
+        padding-bottom: 12px;
+      }
+      
+      .toolbar {
+        flex-direction: column;
+        gap: 16px;
         align-items: stretch;
+        padding: 16px;
       }
       
       .toolbar > div {
         min-width: auto;
-        flex-direction: row;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 8px;
       }
       
       input.search {
         width: 100%;
-        margin-bottom: 8px;
+        margin-bottom: 0;
+      }
+      
+      input[type="date"] {
+        min-width: auto;
+        width: 100%;
+      }
+      
+      select {
+        width: 100%;
       }
       
       table.leads {
         font-size: 12px;
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
       }
       
-      table.leads th, table.leads td {
-        padding: 12px 8px;
+      table.leads th, 
+      table.leads td {
+        padding: 8px 6px;
+        white-space: nowrap;
+      }
+      
+      table.leads th:nth-child(5),
+      table.leads td:nth-child(5) {
+        display: none;
+      }
+      
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
       
       .actions a, .actions button {
-        margin-right: 8px;
+        margin-right: 0;
         margin-bottom: 4px;
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+      
+      .pagination {
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+      }
+      
+      .pagination button {
+        width: 100%;
+      }
+      
+      .modal {
+        width: 95%;
+        padding: 20px;
+        margin: 20px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .main {
+        padding: 12px;
+        margin: 8px;
+      }
+      
+      h2 {
+        font-size: 1.25rem;
+      }
+      
+      .page-header h2 {
+        font-size: 18px;
+      }
+      
+      .toolbar {
+        padding: 12px;
+      }
+      
+      input.search,
+      input[type="date"],
+      select {
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      
+      table.leads {
+        font-size: 11px;
+      }
+      
+      table.leads th, 
+      table.leads td {
+        padding: 6px 4px;
+      }
+      
+      table.leads th:nth-child(4),
+      table.leads td:nth-child(4),
+      table.leads th:nth-child(5),
+      table.leads td:nth-child(5) {
+        display: none;
+      }
+      
+      .actions a, .actions button {
+        font-size: 11px;
+        padding: 3px 6px;
+      }
+      
+      .empty-state {
+        padding: 40px 20px;
+        font-size: 14px;
+      }
+      
+      .modal {
+        padding: 16px;
+        margin: 12px;
+      }
+      
+      .modal h3 {
+        font-size: 18px;
       }
     }
     

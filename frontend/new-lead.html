@@ -416,6 +416,29 @@
           75% { transform: translateY(20px) rotate(270deg); }
         }
 
+        @media (max-width: 1024px) {
+          .main {
+            padding: 32px 24px;
+          }
+
+          .page-header {
+            padding: 28px 32px;
+          }
+
+          .page-header h2 {
+            font-size: 28px;
+          }
+
+          .section {
+            padding: 36px;
+          }
+
+          .loan-options {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+          }
+        }
+
         @media (max-width: 768px) {
           .main {
             padding: 20px 16px;
@@ -436,6 +459,19 @@
             padding: 32px 24px;
           }
 
+          .section h2 {
+            font-size: 24px;
+          }
+
+          .form-group label {
+            font-size: 16px;
+          }
+
+          .form-group select {
+            padding: 16px;
+            font-size: 16px;
+          }
+
           .next-button {
             width: 100%;
             padding: 18px 48px;
@@ -443,22 +479,154 @@
           }
 
           .loan-options {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+          }
+
+          .loan-option {
+            padding: 20px 16px;
+          }
+
+          .loan-option div[style*="font-size: 32px"] {
+            font-size: 28px !important;
+          }
+
+          .security-note {
+            font-size: 14px;
+            padding: 20px;
           }
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 640px) {
+          .main {
+            padding: 16px 12px;
+          }
+
+          .page-header {
+            padding: 20px 16px;
+          }
+
           .page-header h2 {
             font-size: 24px;
+          }
+
+          .section {
+            padding: 24px 20px;
           }
 
           .section h2 {
             font-size: 22px;
           }
 
+          .form-group {
+            margin-bottom: 24px;
+          }
+
+          .form-group label {
+            font-size: 15px;
+          }
+
           .form-group select {
-            padding: 16px;
+            padding: 14px;
+            font-size: 15px;
+          }
+
+          .next-button {
+            padding: 16px 32px;
             font-size: 16px;
+          }
+
+          .loan-options {
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 24px;
+          }
+
+          .loan-option {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            text-align: left;
+          }
+
+          .loan-option div[style*="font-size: 32px"] {
+            font-size: 24px !important;
+            margin-bottom: 0 !important;
+          }
+
+          .loan-option div[style*="font-weight: 700"] {
+            font-size: 16px !important;
+          }
+
+          .loan-option div[style*="font-size: 14px"] {
+            font-size: 13px !important;
+            margin-top: 2px !important;
+          }
+
+          .security-note {
+            font-size: 13px;
+            padding: 16px;
+            flex-direction: column;
+            text-align: center;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .main {
+            padding: 12px 8px;
+          }
+
+          .page-header {
+            padding: 16px 12px;
+          }
+
+          .page-header h2 {
+            font-size: 20px;
+          }
+
+          .section {
+            padding: 20px 16px;
+          }
+
+          .section h2 {
+            font-size: 20px;
+          }
+
+          .form-group label {
+            font-size: 14px;
+          }
+
+          .form-group select {
+            padding: 12px;
+            font-size: 14px;
+          }
+
+          .next-button {
+            padding: 14px 24px;
+            font-size: 15px;
+          }
+
+          .loan-option {
+            padding: 12px;
+            gap: 12px;
+          }
+
+          .loan-option div[style*="font-size: 32px"] {
+            font-size: 20px !important;
+          }
+
+          .loan-option div[style*="font-weight: 700"] {
+            font-size: 15px !important;
+          }
+
+          .loan-option div[style*="font-size: 14px"] {
+            font-size: 12px !important;
+          }
+
+          .security-note {
+            font-size: 12px;
+            padding: 12px;
           }
         }
       </style> 

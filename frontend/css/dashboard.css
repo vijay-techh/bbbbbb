@@ -170,37 +170,227 @@ body {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
 
   .sidebar nav {
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-nav a {
+    white-space: nowrap;
+    padding: 10px 14px;
+    font-size: 14px;
+    margin-bottom: 0;
+  }
+
+  .logo {
+    font-size: 20px;
+    flex-shrink: 0;
   }
 
   .logout {
     border-top: none;
+    padding: 0;
+    flex-shrink: 0;
   }
-}
 
-@media (max-width: 640px) {
   .main {
-    padding: 24px;
+    padding: 20px;
   }
 
   .header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 16px;
+  }
+
+  .header-right {
+    width: 100%;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .filters {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .filters input,
   .filters select,
   .filters button {
     flex: 1;
+    min-width: 140px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .chart {
+    max-width: 100%;
+  }
+
+  .notification-dropdown {
+    width: 280px;
+    right: -20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 16px;
+  }
+
+  .header {
+    margin-bottom: 24px;
+  }
+
+  .header h2 {
+    font-size: 24px;
+  }
+
+  .filters {
+    gap: 8px;
+  }
+
+  .filters input,
+  .filters select,
+  .filters button {
+    min-width: 120px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .filters button {
+    padding: 8px 16px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .amount {
+    font-size: 24px;
+  }
+
+  .chart {
+    padding: 20px;
+  }
+
+  .bar {
+    height: 160px;
+    gap: 12px;
+  }
+
+  .bar-fill {
+    width: 60px;
+    font-size: 14px;
+    padding-bottom: 8px;
+  }
+
+  .notification-bell {
+    position: static;
+  }
+
+  .notification-dropdown {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 320px;
+    max-height: 70vh;
+    right: auto;
+    margin: 0;
+  }
+
+  .sidebar {
+    padding: 12px 16px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .sidebar-nav a {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .logout {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sidebar nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .logo {
+    order: 1;
+  }
+
+  .logout {
+    order: 2;
+  }
+
+  .main {
+    padding: 12px;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filters input,
+  .filters select,
+  .filters button {
+    width: 100%;
     min-width: unset;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .amount {
+    font-size: 20px;
+  }
+
+  .chart {
+    padding: 16px;
+  }
+
+  .bar {
+    height: 120px;
+    gap: 8px;
+  }
+
+  .bar-fill {
+    width: 50px;
+    font-size: 12px;
+    padding-bottom: 6px;
   }
 }
 .sidebar-nav a {
