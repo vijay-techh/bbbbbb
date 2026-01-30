@@ -151,12 +151,30 @@ function renderTable() {
     const bankFinance = highlightText(lead.data?.bankFinance || lead.data?.loanDsa || '-', searchTerm);
     const loanStage = highlightText(lead.data?.loanStage || '-', searchTerm);
     
+    // Get Select Dealer and Ref Name / Mob No fields
+    const selectDealer = highlightText(lead.data?.basicCaseDealerSelect || lead.data?.caseDealer || '-', searchTerm);
+    const refNameMobile = highlightText(lead.data?.basicRefNameMobile || '-', searchTerm);
+    
+    // Get UTR payment information
+    const payments = lead.data?.payments || [];
+    let utrInfo = '-';
+    if (payments.length > 0) {
+      const firstPayment = payments[0];
+      utrInfo = highlightText(
+        `${firstPayment.amount || ''} | ${firstPayment.utrNo || ''} | ${firstPayment.date || ''}`.replace(' |  | ', '').trim() || '-', 
+        searchTerm
+      );
+    }
+    
     tr.innerHTML = `
       <td>${loanId}</td>
       <td>${name}</td>
       <td>${mobile}</td>
       <td>${loanAmount}</td>
       <td>${bankFinance}</td>
+      <td>${selectDealer}</td>
+      <td>${refNameMobile}</td>
+      <td>${utrInfo}</td>
       <td>${loanStage}</td>
       <td>${formatDate(lead.updatedAt || lead.createdAt)}</td>
       <td class="actions">
@@ -238,9 +256,21 @@ function applyFilters() {
       l.data?.loanDsa || '',
       l.data?.loanStage || '',
       l.data?.caseDealer || '',
+      l.data?.basicCaseDealerSelect || '',
+      l.data?.basicRefNameMobile || '',
       l.data?.vehicle || '',
       l.data?.rcNo || '',
-      l.data?.basicRefNameMobile || ''
+      // Add UTR payment data to search
+      ...(l.data?.payments || []).map(p => [
+        p.date || '',
+        p.amount || '',
+        p.utrNo || '',
+        p.acHolderName || '',
+        p.bankName || '',
+        p.acNo || '',
+        p.ifsc || '',
+        p.remarks || ''
+      ]).flat()
     ].join(' ').toLowerCase();
     
     // Stage filter
@@ -268,13 +298,17 @@ function applyFilters() {
       const aText = [
         a.loan_id || '',
         a.data?.name || '',
-        a.data?.mobile || ''
+        a.data?.mobile || '',
+        a.data?.basicCaseDealerSelect || '',
+        a.data?.basicRefNameMobile || ''
       ].join(' ').toLowerCase();
       
       const bText = [
         b.loan_id || '',
         b.data?.name || '',
-        b.data?.mobile || ''
+        b.data?.mobile || '',
+        b.data?.basicCaseDealerSelect || '',
+        b.data?.basicRefNameMobile || ''
       ].join(' ').toLowerCase();
       
       // Exact match priority
