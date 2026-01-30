@@ -336,6 +336,48 @@ loadBusinessType();
 // Initialize notification system
 initNotificationSystem();
 
+// Welcome Popup functionality
+function showWelcomePopup() {
+  // Check if user is manager, employee, or dealer
+  if (user && (user.role === 'manager' || user.role === 'employee' || user.role === 'dealer')) {
+    // Check if this is the first visit (no welcome shown flag)
+    const welcomeShown = sessionStorage.getItem('welcomeShown');
+    
+    if (!welcomeShown) {
+      const popup = document.getElementById('welcomePopup');
+      const welcomeMessage = document.getElementById('welcomeMessage');
+      
+      if (popup && welcomeMessage) {
+        // Set welcome message with username
+        welcomeMessage.textContent = `Welcome ${user.username}!`;
+        
+        // Show popup
+        popup.style.display = 'flex';
+        
+        // Mark that welcome has been shown for this session
+        sessionStorage.setItem('welcomeShown', 'true');
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          closeWelcomePopup();
+        }, 5000);
+      }
+    }
+  }
+}
+
+function closeWelcomePopup() {
+  const popup = document.getElementById('welcomePopup');
+  if (popup) {
+    popup.style.display = 'none';
+  }
+}
+
+// Show welcome popup after page loads
+window.addEventListener('load', () => {
+  setTimeout(showWelcomePopup, 1000); // Delay 1 second to ensure page is fully loaded
+});
+
 setInterval(() => {
   loadDashboard();
   loadBusinessType();
