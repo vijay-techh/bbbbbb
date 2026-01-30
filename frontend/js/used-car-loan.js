@@ -485,19 +485,21 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize basic field visibility based on Source selection
   try { toggleBasicFieldsBySource(); } catch (e) { /* ignore if elements missing */ }
 
-  // Load dealer options from server (admin users) if possible
-  try { loadDealerOptions(); } catch (e) { /* ignore */ }
-
-  // 🎯 Auto-populate dealer name on page load if dealer is logged in and source is "Dealer"
-  const user = getUserFromStorage();
-  const source = document.getElementById('source');
-  const dealerNameInput = document.getElementById('basicDealerName');
-  
-  if (user && user.role === 'dealer' && source && source.value === 'dealer' && dealerNameInput) {
-    dealerNameInput.value = user.username;
-    dealerNameInput.style.backgroundColor = '#f8fafc';
-    dealerNameInput.style.color = '#6b7280';
-    console.log(`🏷️ Auto-populated dealer name on load: ${user.username}`);
+  // 🎯 Load dealer options only if not in edit mode (edit mode loads them separately)
+  if (!loanId) {
+    loadDealerOptions().then(() => {
+      // Auto-populate dealer name on page load if dealer is logged in and source is "Dealer"
+      const user = getUserFromStorage();
+      const source = document.getElementById('source');
+      const dealerNameInput = document.getElementById('basicDealerName');
+      
+      if (user && user.role === 'dealer' && source && source.value === 'dealer' && dealerNameInput) {
+        dealerNameInput.value = user.username;
+        dealerNameInput.style.backgroundColor = '#f8fafc';
+        dealerNameInput.style.color = '#6b7280';
+        console.log(`🏷️ Auto-populated dealer name: ${user.username}`);
+      }
+    }).catch(e => { /* ignore */ });
   }
 
   // Initialize EMI / IRR calculation display
@@ -1646,13 +1648,14 @@ function createPaymentBlock(index) {
 
       <div class="form-field">
         <label for="utrDate${index}">DATE</label>
-        <input id="utrDate${index}" type="date" />
+        <input id="utrDate${index}" name="utrDate${index}" type="date" />
       </div>
 
       <div class="form-field">
         <label for="utrAmount${index}">AMOUNT</label>
         <input
           id="utrAmount${index}"
+          name="utrAmount${index}"
           type="number"
         />
       </div>
@@ -1661,6 +1664,7 @@ function createPaymentBlock(index) {
         <label for="utrNo${index}">UTR NO</label>
         <input
           id="utrNo${index}"
+          name="utrNo${index}"
           data-uppercase
         />
       </div>
@@ -1669,6 +1673,7 @@ function createPaymentBlock(index) {
         <label for="utrAcHolderName${index}">AC HOLDER NAME</label>
         <input
           id="utrAcHolderName${index}"
+          name="utrAcHolderName${index}"
           data-uppercase
           data-alphabets
         />
@@ -1678,6 +1683,7 @@ function createPaymentBlock(index) {
         <label for="utrBankName${index}">BANK NAME</label>
         <input
           id="utrBankName${index}"
+          name="utrBankName${index}"
           data-uppercase
           data-alphabets
         />
@@ -1687,6 +1693,7 @@ function createPaymentBlock(index) {
         <label for="utrAcNo${index}">AC NO</label>
         <input
           id="utrAcNo${index}"
+          name="utrAcNo${index}"
           data-numbers
         />
       </div>
@@ -1695,6 +1702,7 @@ function createPaymentBlock(index) {
         <label for="utrIfsc${index}">IFSC</label>
         <input
           id="utrIfsc${index}"
+          name="utrIfsc${index}"
           data-uppercase
         />
       </div>
@@ -1703,6 +1711,7 @@ function createPaymentBlock(index) {
         <label for="utrRemarks${index}">REMARKS</label>
         <input
           id="utrRemarks${index}"
+          name="utrRemarks${index}"
         />
       </div>
 
@@ -1877,6 +1886,33 @@ document.getElementById("leadForm").addEventListener("submit", async (e) => {
     if (el.id) leadData[el.id] = el.value;
   });
 
+  // 🎯 Collect and structure UTR payment data
+  const payments = [];
+  const paymentBlocks = document.querySelectorAll('.payment-block');
+  
+  paymentBlocks.forEach((block, index) => {
+    const blockIndex = index + 1;
+    const paymentData = {
+      date: document.getElementById(`utrDate${blockIndex}`)?.value || '',
+      amount: document.getElementById(`utrAmount${blockIndex}`)?.value || '',
+      utrNo: document.getElementById(`utrNo${blockIndex}`)?.value || '',
+      acHolderName: document.getElementById(`utrAcHolderName${blockIndex}`)?.value || '',
+      bankName: document.getElementById(`utrBankName${blockIndex}`)?.value || '',
+      acNo: document.getElementById(`utrAcNo${blockIndex}`)?.value || '',
+      ifsc: document.getElementById(`utrIfsc${blockIndex}`)?.value || '',
+      remarks: document.getElementById(`utrRemarks${blockIndex}`)?.value || ''
+    };
+    
+    // Only add payment if it has some data
+    if (paymentData.date || paymentData.amount || paymentData.utrNo) {
+      payments.push(paymentData);
+    }
+  });
+  
+  if (payments.length > 0) {
+    leadData.payments = payments;
+  }
+
   // 🚨 decide create or update
   const url = loanId
     ? `/api/leads/${loanId}`    // EDIT
@@ -2046,14 +2082,16 @@ if (rtoDisplay && rtoDropdown) {
 // =========================
 
 if (loanId) {
-  fetch(`/api/leads/${loanId}`)
-    .then(res => res.json())
-    .then(lead => {
-  if (!lead || !lead.data) {
-    console.error("Invalid lead response", lead);
-    return;
-  }
-  const data = lead.data;
+  // Load dealer options FIRST, then load existing data
+  loadDealerOptions().then(() => {
+    return fetch(`/api/leads/${loanId}`);
+  }).then(res => res.json())
+  .then(lead => {
+    if (!lead || !lead.data) {
+      console.error("Invalid lead response", lead);
+      return;
+    }
+    const data = lead.data;
 
       // ####
       // =========================
@@ -2087,6 +2125,11 @@ if (loanId) {
         const el = document.getElementById(key);
         if (el) el.value = data[key];
       });
+
+      // =========================
+      // 5️⃣ Apply field visibility based on Source
+      // =========================
+      toggleBasicFieldsBySource();
 
 
 
