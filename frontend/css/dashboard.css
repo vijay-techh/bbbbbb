@@ -16,8 +16,8 @@ body {
 /* Sidebar */
 .sidebar {
   width: 280px;
-  background: #111c44;
-  color: #f8fafc;
+  background: #112b44;
+  color: #fcf8fb;
   display: flex;
   flex-direction: column;
   padding: 28px 24px;
